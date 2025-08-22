@@ -10,13 +10,13 @@ import 'flushbar_route.dart' as route;
 const String FLUSHBAR_ROUTE_NAME = '/flushbarRoute';
 
 typedef FlushbarStatusCallback = void Function(FlushbarStatus? status);
-typedef OnTap = void Function(Flushbar flushbar);
+typedef OnTap<T> = void Function(Flushbar<T> flushbar);
 
 /// A highly customizable widget so you can notify your user when you fell like he needs a beautiful explanation.
 // ignore: must_be_immutable
 class Flushbar<T> extends StatefulWidget {
   Flushbar(
-      {Key? key,
+      {super.key,
       this.title,
       this.safeArea = true,
       this.titleColor,
@@ -29,7 +29,7 @@ class Flushbar<T> extends StatefulWidget {
       this.icon,
       this.shouldIconPulse = true,
       this.maxWidth,
-      this.margin = const EdgeInsets.all(0.0),
+      this.margin = EdgeInsets.zero,
       this.padding = const EdgeInsets.all(16),
       this.borderRadius,
       this.textDirection = TextDirection.ltr,
@@ -64,8 +64,7 @@ class Flushbar<T> extends StatefulWidget {
       this.flushbarRoute // Please dont init this
       })
       // ignore: prefer_initializing_formals
-      : onStatusChanged = onStatusChanged,
-        super(key: key) {
+      : onStatusChanged = onStatusChanged {
     onStatusChanged = onStatusChanged ?? (status) {};
   }
 
@@ -235,8 +234,11 @@ class Flushbar<T> extends StatefulWidget {
       flushbar: this,
     ) as route.FlushbarRoute<T?>;
 
-    return await Navigator.of(context, rootNavigator: false)
-        .push(flushbarRoute as Route<T>);
+    if (flushbarRoute == null) {
+      return null;
+    }
+
+    return await Navigator.of(context).push(flushbarRoute! as Route<T>);
   }
 
   /// Dismisses the flushbar causing is to return a future containing [result].
@@ -326,7 +328,7 @@ class _FlushbarState<K extends Object?> extends State<Flushbar<K>>
                 widget.messageText != null),
         'A message is mandatory if you are not using userInputForm. Set either a message or messageText');
 
-    _isTitlePresent = (widget.title != null || widget.titleText != null);
+    _isTitlePresent = widget.title != null || widget.titleText != null;
     _messageTopMargin = _isTitlePresent ? 6.0 : widget.padding.top;
 
     _configureLeftBarFuture();
@@ -554,7 +556,7 @@ class _FlushbarState<K extends Object?> extends State<Flushbar<K>>
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
-              (_isTitlePresent)
+              _isTitlePresent
                   ? Padding(
                       padding: EdgeInsets.only(
                         top: widget.padding.top,
@@ -590,7 +592,7 @@ class _FlushbarState<K extends Object?> extends State<Flushbar<K>>
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
-              (_isTitlePresent)
+              _isTitlePresent
                   ? Padding(
                       padding: EdgeInsets.only(
                         top: widget.padding.top,
@@ -622,7 +624,7 @@ class _FlushbarState<K extends Object?> extends State<Flushbar<K>>
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
-              (_isTitlePresent)
+              _isTitlePresent
                   ? Padding(
                       padding: EdgeInsets.only(
                         top: widget.padding.top,
@@ -662,7 +664,7 @@ class _FlushbarState<K extends Object?> extends State<Flushbar<K>>
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
-              (_isTitlePresent)
+              _isTitlePresent
                   ? Padding(
                       padding: EdgeInsets.only(
                         top: widget.padding.top,

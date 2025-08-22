@@ -90,10 +90,26 @@ class _MyHomePageState extends State<MyHomePage> {
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
           await Flushbar(
-            title: 'Hey Ninja',
-            message:
-                'Lorem Ipsum is simply dummy text of the printing and typesetting industry',
-            duration: Duration(seconds: 3),
+            safeArea: false,
+            titleText: SizedBox(
+              height: 40,
+              width: 40,
+              child: Icon(Icons.add),
+            ),
+            duration: const Duration(seconds: 2),
+            flushbarPosition: FlushbarPosition.TOP,
+            messageText: Text(
+              'Hello flushbar',
+              textAlign: TextAlign.center,
+            ),
+            backgroundColor: Colors.red,
+            flushbarStyle: FlushbarStyle.GROUNDED,
+            padding: const EdgeInsets.only(
+              top: 14,
+              bottom: 20,
+              left: 10,
+              right: 10,
+            ),
           ).show(context);
         },
         tooltip: 'Increment',

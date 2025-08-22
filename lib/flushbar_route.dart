@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'flushbar.dart';
 
 class FlushbarRoute<T> extends OverlayRoute<T> {
-  final Flushbar flushbar;
+  final Flushbar<T> flushbar;
   final Builder _builder;
   final Completer<T> _transitionCompleter = Completer<T>();
   final FlushbarStatusCallback? _onStatusChanged;
@@ -22,10 +22,9 @@ class FlushbarRoute<T> extends OverlayRoute<T> {
 
   FlushbarRoute({
     required this.flushbar,
-    RouteSettings? settings,
+    super.settings,
   })  : _builder = Builder(builder: (BuildContext innerContext) => flushbar),
-        _onStatusChanged = flushbar.onStatusChanged,
-        super(settings: settings) {
+        _onStatusChanged = flushbar.onStatusChanged {
     _configureAlignment(flushbar.flushbarPosition);
   }
 
@@ -35,18 +34,18 @@ class FlushbarRoute<T> extends OverlayRoute<T> {
         {
           _initialAlignment = const Alignment(-1.0, -2.0);
           _endAlignment = flushbar.endOffset != null
-              ? const Alignment(-1.0, -1.0) +
+              ? Alignment.topLeft +
                   Alignment(flushbar.endOffset!.dx, flushbar.endOffset!.dy)
-              : const Alignment(-1.0, -1.0);
+              : Alignment.topLeft;
           break;
         }
       case FlushbarPosition.BOTTOM:
         {
           _initialAlignment = const Alignment(-1.0, 2.0);
           _endAlignment = flushbar.endOffset != null
-              ? const Alignment(-1.0, 1.0) +
+              ? Alignment.bottomLeft +
                   Alignment(flushbar.endOffset!.dx, flushbar.endOffset!.dy)
-              : const Alignment(-1.0, 1.0);
+              : Alignment.bottomLeft;
           break;
         }
     }
@@ -73,19 +72,19 @@ class FlushbarRoute<T> extends OverlayRoute<T> {
     if (flushbar.blockBackgroundInteraction) {
       overlays.add(
         OverlayEntry(
-            builder: (BuildContext context) {
-              return Listener(
-                onPointerDown:
-                    flushbar.isDismissible ? (_) => flushbar.dismiss() : null,
-                child: _createBackgroundOverlay(),
-              );
-            },
-            maintainState: false,
-            opaque: opaque),
+          builder: (BuildContext context) {
+            return Listener(
+              onPointerDown:
+                  flushbar.isDismissible ? (_) => flushbar.dismiss() : null,
+              child: _createBackgroundOverlay(),
+            );
+          },
+          opaque: opaque,
+        ),
       );
     }
 
-    Widget child =  flushbar.isDismissible
+    Widget child = flushbar.isDismissible
         ? _getDismissibleFlushbar(_builder)
         : _getFlushbar();
 
@@ -95,20 +94,20 @@ class FlushbarRoute<T> extends OverlayRoute<T> {
 
     overlays.add(
       OverlayEntry(
-          builder: (BuildContext context) {
-            final Widget annotatedChild = Semantics(
-              focused: false,
-              container: true,
-              explicitChildNodes: true,
-              child: AlignTransition(
-                alignment: _animation!,
-                child: child,
-              ),
-            );
-            return annotatedChild;
-          },
-          maintainState: false,
-          opaque: opaque),
+        builder: (BuildContext context) {
+          final Widget annotatedChild = Semantics(
+            focused: false,
+            container: true,
+            explicitChildNodes: true,
+            child: AlignTransition(
+              alignment: _animation!,
+              child: child,
+            ),
+          );
+          return annotatedChild;
+        },
+        opaque: opaque,
+      ),
     );
 
     return overlays;
@@ -187,10 +186,15 @@ class FlushbarRoute<T> extends OverlayRoute<T> {
         _cancelTimer();
         _wasDismissedBySwipe = true;
 
-        if (isCurrent) {
-          navigator!.pop();
-        } else {
-          navigator!.removeRoute(this);
+        final NavigatorState? navState = navigator;
+        if (navState != null) {
+          if (isActive) {
+            navState.pop();
+          } else {
+            if (navState.canPop()) {
+              navState.removeRoute(this);
+            }
+          }
         }
       },
       child: _getFlushbar(),
@@ -241,7 +245,6 @@ class FlushbarRoute<T> extends OverlayRoute<T> {
     assert(flushbar.animationDuration >= Duration.zero);
     return AnimationController(
       duration: flushbar.animationDuration,
-      debugLabel: debugLabel,
       vsync: navigator!,
     );
   }
@@ -298,19 +301,15 @@ class FlushbarRoute<T> extends OverlayRoute<T> {
     switch (status) {
       case AnimationStatus.completed:
         currentStatus = FlushbarStatus.SHOWING;
-        if (_onStatusChanged != null) _onStatusChanged!(currentStatus);
+        if (_onStatusChanged != null) _onStatusChanged(currentStatus);
         if (overlayEntries.isNotEmpty) overlayEntries.first.opaque = opaque;
-
-        break;
       case AnimationStatus.forward:
         currentStatus = FlushbarStatus.IS_APPEARING;
-        if (_onStatusChanged != null) _onStatusChanged!(currentStatus);
-        break;
+        if (_onStatusChanged != null) _onStatusChanged(currentStatus);
       case AnimationStatus.reverse:
         currentStatus = FlushbarStatus.IS_HIDING;
-        if (_onStatusChanged != null) _onStatusChanged!(currentStatus);
+        if (_onStatusChanged != null) _onStatusChanged(currentStatus);
         if (overlayEntries.isNotEmpty) overlayEntries.first.opaque = false;
-        break;
       case AnimationStatus.dismissed:
         assert(!overlayEntries.first.opaque);
         // We might still be the current route if a subclass is controlling the
@@ -318,7 +317,7 @@ class FlushbarRoute<T> extends OverlayRoute<T> {
         // back gesture drives this animation to the dismissed status before
         // popping the navigator.
         currentStatus = FlushbarStatus.DISMISSED;
-        if (_onStatusChanged != null) _onStatusChanged!(currentStatus);
+        if (_onStatusChanged != null) _onStatusChanged(currentStatus);
 
         if (!isCurrent) {
           navigator!.finalizeRoute(this);
@@ -327,7 +326,6 @@ class FlushbarRoute<T> extends OverlayRoute<T> {
           }
           assert(overlayEntries.isEmpty);
         }
-        break;
     }
     changedInternalState();
   }
@@ -440,16 +438,10 @@ class FlushbarRoute<T> extends OverlayRoute<T> {
     _timer?.cancel();
     super.dispose();
   }
-
-  /// A short description of this route useful for debugging.
-  String get debugLabel => '$runtimeType';
-
-  @override
-  String toString() => '$runtimeType(animation: $_controller)';
 }
 
-FlushbarRoute showFlushbar<T>(
-    {required BuildContext context, required Flushbar flushbar}) {
+FlushbarRoute<T> showFlushbar<T>(
+    {required BuildContext context, required Flushbar<T> flushbar}) {
   return FlushbarRoute<T>(
     flushbar: flushbar,
     settings: const RouteSettings(name: FLUSHBAR_ROUTE_NAME),
